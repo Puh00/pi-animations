@@ -1,3 +1,6 @@
+/* Ocean renderer ported from paulrobello/termflix.
+ * Source commit, copied files, and required notices are listed in THIRD_PARTY_NOTICES.md.
+ */
 import type { Animation, AnimationCell, AnimationFrame, FrameRequest } from "./types.ts";
 
 const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(high, value));

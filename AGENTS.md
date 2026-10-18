@@ -1,7 +1,7 @@
 # Working on pi-animations
 
 - Keep rendering math in concrete implementations under `animations/`. Shared animation types and registry belong there; the player owns terminal formatting, layout, caching, and timers, while `index.ts` owns Pi commands and lifecycle.
-- Preserve renderer output against pinned fixtures in `testdata/`. Keep attribution and required notices in `LICENSE` when porting code.
+- Preserve renderer output against pinned fixtures in `testdata/`. When porting code, add the upstream source, revision, ported files, and license text to `THIRD_PARTY_NOTICES.md`. Keep `LICENSE` as the unmodified MIT text so GitHub detects it.
 - Keep renders within the supplied terminal width. Dispose animation timers when a widget closes, a run settles, or Pi shuts down. Non-interactive modes must not start UI timers.
 - Keep the README short. Put verification details in `verification.md`.
 

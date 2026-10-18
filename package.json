@@ -2,7 +2,7 @@
   "name": "@puh00/pi-animations",
   "version": "1.0.0",
   "description": "Full-width terminal animations while Pi works",
-  "license": "MIT",
+  "license": "MIT AND BSD-3-Clause",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/puh00/pi-animations.git"
@@ -23,6 +23,7 @@
     "animations/",
     "README.md",
     "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
     "verification.md"
   ],
   "type": "module",
