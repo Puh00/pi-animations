@@ -4,15 +4,13 @@ A collection of full-width animations shown while [Pi](https://pi.dev) works. An
 
 ## Install
 
-Requires Pi 1.3.0 or newer and access to this private repository.
+Requires Pi 1.3.0 or newer.
 
 ```sh
-git clone git@github.com:puh00/pi-animations.git
-cd pi-animations
-pi install .
+pi install npm:@puh00/pi-animations
 ```
 
-Run `/reload` in Pi.
+Run `/reload` in Pi. To try it for one session without changing your settings, run `pi -e npm:@puh00/pi-animations`.
 
 ## Try a local checkout
 

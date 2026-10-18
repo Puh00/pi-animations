@@ -1,5 +1,5 @@
 {
-  "name": "pi-animations",
+  "name": "@puh00/pi-animations",
   "version": "1.0.0",
   "description": "Full-width terminal animations while Pi works",
   "license": "MIT",
@@ -7,9 +7,16 @@
     "type": "git",
     "url": "git+https://github.com/puh00/pi-animations.git"
   },
+  "homepage": "https://github.com/puh00/pi-animations#readme",
+  "bugs": {
+    "url": "https://github.com/puh00/pi-animations/issues"
+  },
   "keywords": [
     "pi-package",
-    "pi-extension"
+    "pi-extension",
+    "pi",
+    "animation",
+    "terminal"
   ],
   "files": [
     "index.ts",
@@ -39,5 +46,8 @@
     "preview": "node --experimental-strip-types test/generate-preview.mjs",
     "bench": "node --experimental-strip-types test/benchmark.mjs",
     "typecheck": "tsc --noEmit --strict --target ES2022 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --skipLibCheck index.ts animations/*.ts"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
