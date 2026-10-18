@@ -1,5 +1,5 @@
 /* Aurora renderer ported from cyperx84/ascii-animations.
- * Source commit, copied files, and required notices are listed in LICENSE.
+ * Source commit, copied files, and required notices are listed in THIRD_PARTY_NOTICES.md.
  */
 import type { Animation, AnimationFrame, FrameRequest } from "./types.ts";
 
