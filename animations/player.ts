@@ -2,12 +2,12 @@ import { rgbColor, styleText, truncateToWidth, type TUI } from "@earendil-works/
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { Animation, AnimationCell } from "./types.ts";
 
-export function createAnimationComponent(tui: TUI, theme: Theme, animation: Animation, still = false, preview = false) {
+export function createAnimationComponent(tui: TUI, theme: Theme, animation: Animation, preview = false) {
   let disposed = false;
   let elapsed = 0;
   let cachedWidth = -1;
   let cachedLines: string[] | undefined;
-  const staticMode = still || process.env.ASCIIFX_REDUCED_MOTION === "1" || process.env.TERM === "dumb";
+  const staticMode = process.env.ASCIIFX_REDUCED_MOTION === "1" || process.env.TERM === "dumb";
   const noColor = process.env.NO_COLOR !== undefined || process.env.TERM === "dumb";
   const tickRate = process.env.TMUX || process.env.SSH_CONNECTION ? 15 : 24;
   const timer = !staticMode ? setInterval(() => {
@@ -26,6 +26,7 @@ export function createAnimationComponent(tui: TUI, theme: Theme, animation: Anim
       const cells = animation.renderFrame({ width: columns, height: rows, seconds: elapsed });
       const lines = cells.map(row => row.map(cell => {
         if (!noColor) return colorCell(cell);
+        if (cell.mono) return cell.mono;
         if (!cell.fg && !cell.bg) return cell.glyph;
         if (cell.glyph === ".") return ".";
         const colors = [cell.fg, cell.bg].filter(color => color !== undefined);

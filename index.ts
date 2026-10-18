@@ -3,19 +3,15 @@ import type { TUI } from "@earendil-works/pi-tui";
 import { createAnimationComponent } from "./animations/player.ts";
 import { animations } from "./animations/registry.ts";
 
-export type Mode = "aurora" | "aurora-still" | "off";
+export type Mode = keyof typeof animations | "off";
 
 export function parseMode(value: string): Mode | undefined {
-  switch (value.trim().toLowerCase()) {
-    case "on": case "default": case "aurora": return "aurora";
-    case "still": case "static": case "aurora-still": return "aurora-still";
-    case "off": case "reset": return "off";
-    default: return undefined;
-  }
+  const selection = value.trim().toLowerCase();
+  return selection === "off" ? "off" : Object.hasOwn(animations, selection) ? selection as keyof typeof animations : undefined;
 }
 
-export function createAuroraComponent(tui: TUI, theme: Theme, mode: Exclude<Mode, "off">, preview = false) {
-  return createAnimationComponent(tui, theme, animations.aurora, mode === "aurora-still", preview);
+export function createAnimation(tui: TUI, theme: Theme, name: keyof typeof animations, preview = false) {
+  return createAnimationComponent(tui, theme, animations[name], preview);
 }
 
 const WIDGET_KEY = "pi-loading-animation-scene";
@@ -33,7 +29,7 @@ export default function (pi: ExtensionAPI) {
     const activeMode = mode;
     if (busy && activeMode !== "off") {
       ctx.ui.setWorkingIndicator({ frames: [""] });
-      ctx.ui.setWidget(WIDGET_KEY, (tui, theme) => createAuroraComponent(tui, theme, activeMode), { placement: "aboveEditor" });
+      ctx.ui.setWidget(WIDGET_KEY, (tui, theme) => createAnimation(tui, theme, activeMode), { placement: "aboveEditor" });
     } else {
       ctx.ui.setWidget(WIDGET_KEY, undefined);
       ctx.ui.setWorkingIndicator(undefined);
@@ -46,7 +42,7 @@ export default function (pi: ExtensionAPI) {
     for (const entry of ctx.sessionManager.getBranch()) {
       if (entry.type !== "custom" || entry.customType !== "nap-animation") continue;
       const data = entry.data as { mode?: unknown } | undefined;
-      if (typeof data?.mode === "string") mode = parseMode(data.mode) ?? "aurora";
+      if (typeof data?.mode === "string") mode = data.mode === "aurora-still" ? "aurora" : parseMode(data.mode) ?? "aurora";
     }
     syncUi(ctx);
   });
@@ -63,29 +59,33 @@ export default function (pi: ExtensionAPI) {
     syncUi(ctx);
   });
 
-  for (const command of ["aurora", "animation", "nap"]) {
-    pi.registerCommand(command, {
-      description: "Control Aurora: on, preview, still, or off.",
-      handler: async (args, ctx) => {
-        const selection = args.trim().toLowerCase() || "on";
-        if (selection === "preview") {
-          if (!ctx.hasUI || ctx.mode !== "tui") return;
-          await ctx.ui.custom<void>((tui, theme, _keybindings, done) => {
-            const component = createAuroraComponent(tui, theme, mode === "off" ? "aurora" : mode, true);
-            return { ...component, handleInput: () => done() };
-          });
-          return;
-        }
-        const next = parseMode(selection);
-        if (!next) {
-          if (ctx.hasUI) ctx.ui.notify(`Usage: /${command} [on|preview|still|off]`, "error");
-          return;
-        }
-        mode = next;
-        syncUi(ctx);
-        pi.appendEntry("nap-animation", { mode });
-        if (ctx.hasUI) ctx.ui.notify(`Working animation: ${mode}`, "info");
-      },
-    });
-  }
+  pi.registerCommand("animation", {
+    description: "Choose a working animation or preview it.",
+    getArgumentCompletions: (prefix) => {
+      const choices = [...Object.keys(animations), "preview", "off"]
+        .filter(name => name.startsWith(prefix.trim().toLowerCase()))
+        .map(name => ({ value: name, label: name }));
+      return choices.length ? choices : null;
+    },
+    handler: async (args, ctx) => {
+      const selection = args.trim().toLowerCase() || "aurora";
+      if (selection === "preview") {
+        if (!ctx.hasUI || ctx.mode !== "tui") return;
+        await ctx.ui.custom<void>((tui, theme, _keybindings, done) => {
+          const component = createAnimation(tui, theme, mode === "off" ? "aurora" : mode, true);
+          return { ...component, handleInput: () => done() };
+        });
+        return;
+      }
+      const next = parseMode(selection);
+      if (!next) {
+        if (ctx.hasUI) ctx.ui.notify(`Usage: /animation [${Object.keys(animations).join("|")}|preview|off]`, "error");
+        return;
+      }
+      mode = next;
+      syncUi(ctx);
+      pi.appendEntry("nap-animation", { mode });
+      if (ctx.hasUI) ctx.ui.notify(`Working animation: ${mode}`, "info");
+    },
+  });
 }

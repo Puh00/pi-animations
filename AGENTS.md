@@ -10,3 +10,5 @@ Before publishing, run `npm ci --ignore-scripts`, `npm test`, `npm run typecheck
 For rendering or lifecycle changes, also run `npm run test:pi`. It needs Pi 1.3.0, tmux, and Python 3, and uses a temporary configuration with a local test provider. Do not change the user's Pi settings for tests.
 
 Regenerate the browser preview with `npm run preview` after changing a renderer. The generated `.lavish/` directory is local and ignored. Do not publish `artifacts/`, model credentials, or personal session data.
+
+To add an animation, implement `Animation` in `animations/`, register it in `animations/registry.ts`, and add deterministic renderer tests and fixtures under `test/` and `testdata/`. Keep renderer math concrete and preserve one printable single-column glyph per cell.

@@ -1,7 +1,7 @@
 {
   "name": "pi-animations",
   "version": "1.0.0",
-  "description": "Full-width Aurora northern lights while Pi works",
+  "description": "Full-width terminal animations while Pi works",
   "license": "MIT",
   "repository": {
     "type": "git",

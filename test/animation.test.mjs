@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import extension, { createAuroraComponent, parseMode } from '../index.ts';
+import extension, { createAnimation, parseMode } from '../index.ts';
 import { createAnimationComponent } from '../animations/player.ts';
 import { visibleWidth } from '@earendil-works/pi-tui';
 
@@ -29,12 +29,11 @@ function fakeTimers(run) {
   });
 }
 
-test('only Aurora modes remain, with command aliases', () => {
+test('registered animation modes remain available', () => {
   assert.equal(parseMode(' AURORA '), 'aurora');
-  assert.equal(parseMode('on'), 'aurora');
-  assert.equal(parseMode('still'), 'aurora-still');
-  assert.equal(parseMode('reset'), 'off');
-  for (const removed of ['cat', 'sail', 'orbit', 'unknown']) assert.equal(parseMode(removed), undefined);
+  assert.equal(parseMode('ocean'), 'ocean');
+  assert.equal(parseMode('off'), 'off');
+  for (const removed of ['cat', 'sail', 'orbit', 'unknown', 'constructor', 'toString', '__proto__']) assert.equal(parseMode(removed), undefined);
 });
 
 test('generic player handles frame time, resize, cache, monochrome text, and disposal', () => fakeTimers(({ timers, callbacks, cleared, intervals }) => {
@@ -64,7 +63,7 @@ test('generic player handles frame time, resize, cache, monochrome text, and dis
 test('Aurora fills the available width, caches frames, and disposes its timer', () => fakeTimers(({ timers, callbacks, cleared }) => {
   let requested = 0;
   let colorMode = 'truecolor';
-  const component = createAuroraComponent({ requestRender: () => requested++ }, { ...theme, getColorMode: () => colorMode }, 'aurora');
+  const component = createAnimation({ requestRender: () => requested++ }, { ...theme, getColorMode: () => colorMode }, 'aurora');
   const id = [...timers.keys()][0];
   for (const width of [0, 1, 3, 24, 60, 90, 120, 240, 320, 512]) {
     const lines = component.render(width);
@@ -88,20 +87,35 @@ test('Aurora fills the available width, caches frames, and disposes its timer', 
   callbacks.get(id)();
   assert.equal(requested, 1);
   assert.strictEqual(component.render(120), reduced);
-  const still = createAuroraComponent({ requestRender() { assert.fail('static animation ticked'); } }, theme, 'aurora-still');
   assert.equal(timers.size, 0);
-  assert.ok(still.render(240).every(line => visibleWidth(line) === 240));
-  still.dispose();
+}));
+
+test('Ocean player fits tiny and wide widths and advances animation time', () => fakeTimers(({ timers, callbacks }) => {
+  const component = createAnimation({ requestRender() {} }, theme, 'ocean');
+  const id = [...timers.keys()][0];
+  for (const width of [1, 2, 3, 12, 240]) assert.ok(component.render(width).every(line => visibleWidth(line) === width));
+  const first = component.render(90);
+  callbacks.get(id)();
+  assert.notDeepEqual(component.render(90), first);
+  component.dispose();
 }));
 
 test('commands, session migration, preview, non-TUI guards, and idle cleanup', () => fakeTimers(async ({ timers, callbacks }) => {
-  const handlers = {}, commands = {}, entries = [], indicators = [], notifications = [];
+  const handlers = {}, commands = {}, entries = [], indicators = [], notifications = [], previews = [];
   const widgets = new Map();
   extension({
     on: (name, handler) => { handlers[name] = handler; },
     registerCommand: (name, command) => { commands[name] = command; },
     appendEntry: (...args) => entries.push(args),
   });
+  assert.deepEqual(Object.keys(commands), ['animation']);
+  const complete = commands.animation.getArgumentCompletions;
+  assert.deepEqual(complete(''), ['aurora', 'ocean', 'preview', 'off'].map(name => ({ value: name, label: name })));
+  assert.deepEqual(complete('o').map(item => item.value), ['ocean', 'off']);
+  assert.deepEqual(complete(' AUR').map(item => item.value), ['aurora']);
+  assert.equal(complete('unknown'), null);
+  assert.equal(complete('ocean preview'), null);
+  const plain = value => value.replace(/\x1b\[[0-9;]*m/g, '');
   const context = (mode = 'tui', saved = []) => ({
     mode, hasUI: mode === 'tui', sessionManager: { getBranch: () => saved },
     ui: {
@@ -114,7 +128,9 @@ test('commands, session migration, preview, non-TUI guards, and idle cleanup', (
       custom: async factory => {
         let finished = false;
         const component = factory({ requestRender() {} }, theme, {}, () => { finished = true; });
-        assert.ok(component.render(90).join('').includes('Preview'));
+        const rendered = component.render(90).join('');
+        assert.ok(rendered.includes('Preview'));
+        previews.push(rendered);
         component.handleInput('x');
         assert.ok(finished);
         component.dispose();
@@ -123,45 +139,59 @@ test('commands, session migration, preview, non-TUI guards, and idle cleanup', (
   });
   await handlers.session_start({}, context());
   assert.equal(timers.size, 0);
-  await commands.aurora.handler('preview', context());
+  await commands.animation.handler('preview', context());
+  assert.match(previews.at(-1), /[▀▄█]/);
   assert.equal(timers.size, 0);
   await handlers.agent_start({}, context());
   assert.equal(widgets.size, 1);
   assert.equal(timers.size, 1);
   assert.deepEqual(indicators.at(-1), { frames: [''] });
-  await commands.animation.handler('still', context());
-  assert.deepEqual(entries.at(-1), ['nap-animation', { mode: 'aurora-still' }]);
-  assert.equal(timers.size, 0);
+  await commands.animation.handler('ocean', context());
+  assert.deepEqual(entries.at(-1), ['nap-animation', { mode: 'ocean' }]);
+  await commands.animation.handler('preview', context());
+  assert.match(plain(previews.at(-1)), /▀/);
+  assert.equal(timers.size, 1);
+  await handlers.agent_start({}, context());
+  const activeOcean = widgets.get('pi-loading-animation-scene').render(50).join('');
+  assert.match(activeOcean, /▀/);
+  await handlers.session_start({}, context('tui', [{ type: 'custom', customType: 'nap-animation', data: { mode: 'ocean' } }]));
+  await handlers.agent_start({}, context());
   assert.equal(widgets.size, 1);
-  await commands.aurora.handler('on', context());
+  const restoredOcean = widgets.get('pi-loading-animation-scene').render(50).join('');
+  assert.equal(restoredOcean, activeOcean, 'session restoration selects Ocean instead of default Aurora');
+  await commands.animation.handler('aurora', context());
   assert.equal(timers.size, 1);
   const entryCount = entries.length;
   await commands.animation.handler('cat', context());
   assert.equal(notifications.at(-1)[1], 'error');
+  for (const removed of ['still', 'static']) await commands.animation.handler(removed, context());
+  assert.equal(notifications.at(-1)[1], 'error');
   assert.equal(entries.length, entryCount, 'removed designs are rejected');
-  await commands.nap.handler('off', context());
+  await commands.animation.handler('off', context());
+  await commands.animation.handler('preview', context());
+  assert.match(previews.at(-1), /[▀▄█]/);
   assert.equal(timers.size, 0);
   assert.equal(widgets.size, 0);
   assert.equal(indicators.at(-1), undefined);
   for (const finish of ['agent_settled', 'session_shutdown']) {
-    await commands.aurora.handler('on', context());
+    await commands.animation.handler('aurora', context());
     await handlers.agent_start({}, context());
     await handlers[finish]({}, context());
     assert.equal(widgets.size, 0);
     assert.equal(timers.size, 0);
   }
-  for (const savedMode of ['cat', 'sail', 'orbit', 'aurora-still', 'off']) {
+  for (const savedMode of ['cat', 'ocean', 'aurora-still', 'off']) {
     await handlers.session_start({}, context('tui', [{ type: 'custom', customType: 'nap-animation', data: { mode: savedMode } }]));
     await handlers.agent_start({}, context());
     assert.equal(widgets.size, savedMode === 'off' ? 0 : 1);
-    assert.equal(timers.size, savedMode === 'off' || savedMode === 'aurora-still' ? 0 : 1);
+    assert.equal(timers.size, savedMode === 'off' ? 0 : 1);
     await handlers.agent_settled({}, context());
   }
   const previousTimers = callbacks.size;
   for (const mode of ['print', 'json', 'rpc']) {
     await handlers.session_start({}, context(mode));
     await handlers.agent_start({}, context(mode));
-    await commands.aurora.handler('preview', context(mode));
+    await commands.animation.handler('preview', context(mode));
     await handlers.agent_settled({}, context(mode));
     await handlers.session_shutdown({}, context(mode));
   }

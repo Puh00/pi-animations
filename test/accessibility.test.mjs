@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createAuroraComponent } from '../index.ts';
+import { createAnimation } from '../index.ts';
 import { renderAurora } from '../animations/aurora.ts';
 
 const theme = { fg: (_, text) => text, getColorMode: () => '256color' };
@@ -16,14 +16,14 @@ test('reduced motion is static, NO_COLOR is readable ASCII, and Pi selects 256 c
     delete process.env.NO_COLOR;
     process.env.TERM = 'xterm-256color';
     process.env.ASCIIFX_REDUCED_MOTION = '1';
-    let component = createAuroraComponent({ requestRender() {} }, theme, 'aurora');
+    let component = createAnimation({ requestRender() {} }, theme, 'aurora');
     assert.equal(timers, 0);
     const colored = component.render(60).join('\n');
     assert.match(colored, /\x1b\[38;5;/);
     assert.doesNotMatch(colored, /\x1b\[38;2;/);
     component.dispose();
     process.env.NO_COLOR = '';
-    component = createAuroraComponent({ requestRender() {} }, theme, 'aurora');
+    component = createAnimation({ requestRender() {} }, theme, 'aurora');
     const plain = component.render(60).join('\n');
     assert.match(plain, /^[\x20-\x7e\n]+$/);
     assert.match(plain, /[+*#%@]/);
@@ -31,7 +31,7 @@ test('reduced motion is static, NO_COLOR is readable ASCII, and Pi selects 256 c
     component.dispose();
     delete process.env.ASCIIFX_REDUCED_MOTION;
     process.env.TERM = 'dumb';
-    component = createAuroraComponent({ requestRender() {} }, theme, 'aurora');
+    component = createAnimation({ requestRender() {} }, theme, 'aurora');
     assert.equal(timers, 0);
     component.dispose();
   } finally {
