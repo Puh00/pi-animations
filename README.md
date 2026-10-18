@@ -1,5 +1,8 @@
 # pi-animations
 
+[![npm version](https://img.shields.io/npm/v/@puh00/pi-animations)](https://www.npmjs.com/package/@puh00/pi-animations)
+[![license](https://img.shields.io/npm/l/@puh00/pi-animations)](LICENSE)
+
 A collection of full-width animations shown while [Pi](https://pi.dev) works. Animations adapt to terminal width and stop when the run ends or is cancelled. Headless sessions do not start animation timers.
 
 ## Install
