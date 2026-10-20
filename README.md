@@ -5,7 +5,7 @@
 
 Full-width Aurora and Ocean animations for [Pi](https://pi.dev). They adapt to terminal width and stop when a run ends or is cancelled.
 
-![Looping Aurora and Ocean animation preview](https://raw.githubusercontent.com/Puh00/pi-animations/main/docs/animations.gif)
+![Looping Aurora and Ocean animation preview](https://raw.githubusercontent.com/Puh00/pi-animations/f3faea510b379174a79817e3d53b4436cd8369fa/docs/animations.gif)
 
 ## Install and try
 
