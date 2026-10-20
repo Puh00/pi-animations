@@ -1,6 +1,6 @@
 # Verification
 
-Verified on branch `ocean-animation` with Node 22.23.2, Pi 1.3.0, Python 3, and tmux. Aurora's renderer remains unchanged and its 27 pinned upstream frames still pass. Ocean retains upstream half-block rendering and timing, but changes the composition for a compact widget. It maps the normalized wave through `0.3 * tanh(1.7 * wave / 0.3)` around the existing `0.35h` anchor. Since `tanh` stays strictly between -1 and 1, the surface stays between `0.05h` and `0.65h` for every time and column, without hard clipping. A depth-normalized, phase-shifted blue/cyan contour colors the water. The original sine frequencies, phase velocities, brightness-depth gradient, half-block output, and vertical pixel sampling remain in use.
+Verified on branch `improve-ocean-shading` with Node 22.23.2, Pi 1.3.0, Python 3, and tmux. Ocean retains the adapted wave geometry and its four original sine phases. It still maps the normalized wave through `0.3 * tanh(1.7 * wave / 0.3)` around the existing `0.35h` anchor, keeping the surface between `0.05h` and `0.65h`. The renderer now blends sky, phase-modulated crest foam, and water by subpixel coverage instead of hard pixel-threshold switches. The original depth gradient was continuous; coarse half-block sampling and discontinuous foam/sky boundaries caused the visual issue. Water shading uses a depth-scaled blue/cyan contour tied to the existing wave phase.
 
 ## Aurora reference
 
@@ -8,43 +8,48 @@ Verified on branch `ocean-animation` with Node 22.23.2, Pi 1.3.0, Python 3, and 
 
 To regenerate them, copy `testdata/aurora-reference.go` into the pinned upstream checkout at `cmd/aurora-fixture.go`, run `go run ./cmd/aurora-fixture.go`, and redirect the output to this repository's `testdata/aurora-reference.json`. Go is not needed to run the package.
 
-## Ocean baseline and adaptation
+## Ocean baseline and tests
 
-`testdata/ocean-reference.json` remains the unmodified upstream baseline at commit `f2f2a3abe818bc0f85986c66de5750ef13cd1e59`. It contains complete glyph, foreground, background, and monochrome frames for 12x3 at 0 seconds, 40x8 at 0 seconds, 40x5 at 0.5 seconds, and 24x10 at 1.25 seconds. The pinned Rust fixture driver and independent Python equation cross-check are described below. The adapted renderer intentionally does not compare equal to these baseline frames.
+`testdata/ocean-reference.json` remains the pinned upstream baseline at commit `f2f2a3abe818bc0f85986c66de5750ef13cd1e59`. It contains complete glyph, foreground, background, and monochrome frames for four size/time cases. `testdata/ocean-upstream-fixture.rs` exercises the original Ocean factory and canvas. `testdata/ocean-reference.py` independently translates upstream Ocean and half-block rendering. The four fixture frames matched compiled Rust output cell-for-cell.
 
-`test/ocean.test.mjs` compares the compact 40x5 crest and color behavior against that baseline, checks adapted frames at 5, 6, and 10 rows, and compares the Pi player's decoded truecolor ANSI cells against the adapted renderer output. It also scans width-80 frames at 0.1-second intervals from 0 through 120 seconds, checking that sky, foam, and water remain visible at each height. The sweep includes 58.4 seconds, where the unbounded gain previously pushed a crest above the frame.
-
-For the original-source comparison, `testdata/ocean-upstream-fixture.rs` can be appended temporarily to `src/main.rs` in a checkout of pinned termflix. It invokes the original Ocean factory and `Canvas::build_grid()` in TrueColor and Mono half-block modes. From that checkout, run:
+To reproduce the upstream fixture, append `testdata/ocean-upstream-fixture.rs` to `src/main.rs` in the pinned termflix checkout, then run:
 
 ```sh
 cargo test --release --locked --bin termflix emit_upstream_ocean_frames -- --nocapture > /tmp/ocean-upstream.log
 python3 /path/to/pi-animations/testdata/extract-ocean-fixture.py /tmp/ocean-upstream.log > /path/to/pi-animations/testdata/ocean-reference.json
 ```
 
-The original crate compiled with Rust 1.99.1 installed under `/tmp`, so no global Rust settings changed. The checked-in baseline fixture was reproduced from this Rust driver. `testdata/ocean-reference.py` independently translates the upstream equations and half-block scaling. Its four full frames matched the compiled Rust output cell-for-cell.
+`testdata/ocean-improved-reference.json` pins complete glyph and RGB frames for 80x5 at 0.5 seconds and 80x6 at 1.25 seconds. `test/ocean.test.mjs` checks dimensions, deterministic output, crest shape, color range, monochrome output, Pi ANSI formatting, and sky/foam/water visibility across 0 to 120 seconds at 5, 6, and 10 rows. It finds time roots where fixed pixels cross depths -2, -1.75, 0, and 1.75, then checks each same pixel immediately before and after the crossing. Missing colors compare as black, preserving coordinates across sky transitions. The 8-level tolerance accounts for the monochrome dark threshold; the old hard foam transitions exceed it.
 
-## Visual comparisons
+## Visual comparison
 
-`artifacts/ocean-before-after-5.png`, `artifacts/ocean-before-after-6.png`, and `artifacts/ocean-before-after-10.png` compare baseline `4db1406` against the adapted renderer at width 80 and times 0.5, 1.25, and 3 seconds. Each panel uses a 10x20 pixel terminal cell. `.lavish/ocean-adaptation.html` offers the same baseline/adapted time and height comparison in a browser.
+Run `node --experimental-strip-types testdata/ocean-compare.mjs` to generate `.lavish/ocean-comparison.html` and its frame data. `testdata/render-ocean-comparison.py` rasterizes that data to PNGs in ignored `artifacts/` using Pillow and DejaVu Sans Mono. Its glyph handling draws the upper and lower half-block colors separately and places Aurora dots in their actual glyph cell. The interactive page and PNGs compare upstream equations, the pre-task compact port, the updated port, and Aurora at 80 columns, heights 5 and 6, and times 0, 0.5, 1.25, 3, and 58.4 seconds. It uses the pinned upstream fixture when a matching case exists and an independent translation of upstream equations for other cases. The old port is loaded directly from base commit `d097ac3`, not from an ignored local file or package source. Desktop layout keeps two panels per row so each frame remains legible. The comparison uses RGB swatches and terminal half-block pixels.
 
-The PTY tests ran Pi 1.3.0 with a temporary configuration and local provider in regular and fullscreen modes. They checked half-block Ocean output, foreground/background truecolor variation, cyan-to-deep-blue range, changing frames, and 24- and 240-column layouts. Actual Pi ANSI captures are `artifacts/regular-ocean-1.ansi` and `artifacts/fullscreen-ocean-1.ansi`; the corresponding `*-ocean-1.png` images rasterize those ANSI captures with DejaVu Sans Mono and captured RGB values. These images show the Pi widget output, not the browser renderer. PNG conversion used Pillow installed under `/tmp`; it is not a project dependency.
+Raster comparisons at 80x5 and 80x6 for 0.5, 1.25, and 3 seconds are `artifacts/ocean-compare-{5,6}rows-{0-5,1-25,3}.png`. The 58.4-second cases are included as well.
 
-## Check results
+## Performance
 
-The following checks passed on the current worktree:
+`npm run bench` measures Ocean at heights 5, 6, and 10 and widths 60, 120, 240, and 320. Its output reports median and p95 CPU render time; it excludes terminal diffing and output. The player's cached render is also measured. A separate 500-frame before/after comparison at 80 columns measured old/new median and p95 CPU time of 0.056/0.073 ms versus 0.080/0.119 ms at 5 rows, and 0.070/0.105 ms versus 0.094/0.133 ms at 6 rows. This isolated renderer benchmark excludes terminal formatting.
+
+## Checks
+
+Passed on this worktree:
 
 - `npm ci --ignore-scripts`
-- `npm test` (12 passing tests, including Aurora fixtures, baseline comparison, adapted Ocean geometry/color, the 0-120 second visibility sweep, Pi ANSI formatting, command/session behavior, sizing/timing, and accessibility)
+- `npm test`
 - `npm run typecheck`
-- `npm run test:pi` (regular and fullscreen TUI; Ocean colors, frame changes, reload, resizing, abort, tool execution, settle cleanup, and off mode)
-- `npm run preview` (isolates and smoke-renders both renderer modules)
+- `npm run test:pi` in regular and fullscreen Pi TUI modes
+- `npm run preview`
+- `node --experimental-strip-types testdata/ocean-compare.mjs`
+- `PYTHONPATH=/tmp/ocean-pillow python3 testdata/render-ocean-comparison.py` (local Pillow install)
+- `npm run bench`
 - `npm pack --dry-run`
 - `git diff --check`
 
-Pi tests use the temporary configuration and local fixture provider. They do not use credentials or alter the user's Pi settings. Test captures are local under ignored `artifacts/`; `.lavish/` is also ignored and is not included in the package.
+Pi tests use a temporary configuration and local provider. They do not alter user Pi settings. `.lavish/` is ignored and excluded from the package.
 
 ## Accessibility and lifecycle
 
-The shared player owns terminal formatting, caching, resizing, and timer disposal. `ASCIIFX_REDUCED_MOTION=1` and `TERM=dumb` suppress timers. `NO_COLOR` renders Aurora with ASCII density shades and Ocean with monochrome half-blocks. The Pi command is `/animation`; `/aurora`, `/nap`, and static animation mode were removed. Old `aurora-still` session entries migrate to animated Aurora; unknown saved selections default to Aurora.
+The shared player owns terminal formatting, caching, resizing, and timer disposal. `ASCIIFX_REDUCED_MOTION=1` and `TERM=dumb` suppress timers. `NO_COLOR` renders Aurora with ASCII density shades and Ocean with monochrome half-blocks. The Pi command is `/animation`. Old `aurora-still` session entries migrate to animated Aurora; unknown saved selections default to Aurora.
 
 Not checked: other Pi versions, Windows terminals, light-theme visual contrast, or automatic retry and compaction paths in a live model session.
