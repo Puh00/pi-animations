@@ -3,9 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/@puh00/pi-animations)](https://www.npmjs.com/package/@puh00/pi-animations)
 [![license](https://img.shields.io/npm/l/@puh00/pi-animations)](LICENSE)
 
-A collection of full-width animations shown while [Pi](https://pi.dev) works. Animations adapt to terminal width and stop when the run ends or is cancelled. Headless sessions do not start animation timers.
+Full-width Aurora and Ocean animations for [Pi](https://pi.dev). They adapt to terminal width and stop when a run ends or is cancelled.
 
-## Install
+![Looping Aurora and Ocean animation preview](https://raw.githubusercontent.com/Puh00/pi-animations/f3faea510b379174a79817e3d53b4436cd8369fa/docs/animations.gif)
+
+## Install and try
 
 Requires Pi 1.3.0 or newer.
 
@@ -13,7 +15,16 @@ Requires Pi 1.3.0 or newer.
 pi install npm:@puh00/pi-animations
 ```
 
-Run `/reload` in Pi. To try it for one session without changing your settings, run `pi -e npm:@puh00/pi-animations`.
+Run `/reload` in an open Pi session. To try the extension for one session without changing your settings, run `pi -e npm:@puh00/pi-animations`.
+
+In Pi, select an animation, preview it, then send a prompt:
+
+```text
+/animation aurora
+/animation preview
+```
+
+Choose Ocean with `/animation ocean`. Press any key to close the preview. Send a normal prompt to see the animation while Pi works.
 
 ## Try a local checkout
 
@@ -49,7 +60,7 @@ For a browser-only preview, run `npm run preview` and open `.lavish/preview.html
 
 Type `/animation ` to see argument suggestions, or start typing a name to filter them.
 
-Selections persist per session. Old `aurora-still` selections migrate to animated Aurora. `ASCIIFX_REDUCED_MOTION=1` and `TERM=dumb` disable animation timers. Ocean uses colored half-block cells with vertical sub-cell resolution and tuned crest/color contours for a compact widget. `NO_COLOR` renders Aurora with ASCII brightness shades and Ocean with monochrome half-blocks. The old `/aurora` and `/nap` commands are removed.
+Selections persist per session. `/animation off` restores Pi's normal indicator. `ASCIIFX_REDUCED_MOTION=1` and `TERM=dumb` disable animation timers. `NO_COLOR` renders both animations without color.
 
 ## Acknowledgements
 
