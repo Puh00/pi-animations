@@ -1,6 +1,7 @@
 import { performance } from 'node:perf_hooks';
-import { createAuroraComponent } from '../index.ts';
+import { createAnimation } from '../index.ts';
 import { renderAurora } from '../animations/aurora.ts';
+import { renderOcean } from '../animations/ocean.ts';
 
 const theme = { fg: (_, text) => text, getColorMode: () => 'truecolor' };
 const results = [];
@@ -28,13 +29,15 @@ function measure(action) {
 
 try {
   for (const width of [60, 120, 240, 320]) {
-    const renderer = measure(i => renderAurora(width, 10, i / 24));
-    const component = createAuroraComponent({ requestRender() {} }, theme, 'aurora');
+    const rows = 10;
+    const renderer = measure(i => renderAurora(width, rows, i / 24));
+    const ocean = Object.fromEntries([5, 6, 10].map(height => [height, measure(i => renderOcean(width, height, i / 24))]));
+    const component = createAnimation({ requestRender() {} }, theme, 'aurora');
     const full = measure(() => { tick(); component.render(width); });
     const cached = measure(() => component.render(width));
     const ansiBytes = Buffer.byteLength(component.render(width).join('\n'));
     component.dispose();
-    results.push({ width, rows: 10, renderer, frame_with_ansi: full, cached_render: cached, ansi_bytes: ansiBytes });
+    results.push({ width, rows, renderer, ocean, frame_with_ansi: full, cached_render: cached, ansi_bytes: ansiBytes });
   }
 } finally {
   globalThis.setInterval = oldSet;

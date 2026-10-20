@@ -4,6 +4,7 @@ import { renderOcean } from '../animations/ocean.ts';
 import { createAnimation } from '../index.ts';
 import fs from 'node:fs';
 const reference = JSON.parse(fs.readFileSync(new URL('../testdata/ocean-reference.json', import.meta.url), 'utf8'));
+const improvedReference = JSON.parse(fs.readFileSync(new URL('../testdata/ocean-improved-reference.json', import.meta.url), 'utf8'));
 
 function decodeAnsi(lines) {
   return lines.map(line => {
@@ -49,6 +50,20 @@ function foamRows(frame) {
   }).join('');
 }
 
+test('Ocean improved renders match pinned RGB and glyph fixtures', () => {
+  assert.equal(improvedReference.revision, 'improve-ocean-shading');
+  for (const item of improvedReference.cases) {
+    const expected = item.rows.map(row => [...row.glyphs].map((glyph, x) => {
+      const cell = { glyph, mono: row.mono[x] };
+      const fg = row.fg.split(';')[x], bg = row.bg.split(';')[x];
+      if (fg !== '-') cell.fg = fg.split(',').map(Number);
+      if (bg !== '-') cell.bg = bg.split(',').map(Number);
+      return cell;
+    }));
+    assert.deepEqual(renderOcean(item.width, item.height, item.seconds), expected);
+  }
+});
+
 test('Ocean adaptation differs from the pinned upstream baseline while retaining half-block output', () => {
   assert.equal(reference.revision, 'f2f2a3abe818bc0f85986c66de5750ef13cd1e59');
   const source = reference.cases.find(item => item.width === 40 && item.height === 5 && item.seconds === .5);
@@ -60,7 +75,8 @@ test('Ocean adaptation differs from the pinned upstream baseline while retaining
   assert.notEqual(adaptedCrest, sourceCrest);
   assert.ok([...adaptedCrest].filter(row => row === '2').length > [...sourceCrest].filter(row => row === '2').length,
     'wave crest spans more columns at the upper surface');
-  assert.deepEqual([adapted[2][24].bg, adapted[4][32].fg], [[5, 106, 125], [1, 20, 58]], 'cyan contour transitions to deep blue');
+  assert.notDeepEqual(adapted[2][24].bg, original[2][24].bg, 'foam edge blends into the water');
+  assert.ok(adapted.flat().some(cell => cell.fg?.[0] > 100 && cell.fg?.[0] < 220), 'foam blends retain intermediate light colors');
   assert.ok(adapted.flat().every(cell => cell.glyph.length === 1 && [cell.fg, cell.bg].every(color => !color || color.every(v => Number.isInteger(v) && v >= 0 && v <= 255))));
   for (const height of [5, 6, 10]) for (const seconds of [.5, 1.25, 3]) {
     const frame = renderOcean(80, height, seconds);
@@ -74,6 +90,48 @@ test('Ocean adaptation differs from the pinned upstream baseline while retaining
   }
   assert.ok(original.flat().some(cell => cell.glyph === ' '), 'upstream baseline fixture covers sky');
   assert.throws(() => renderOcean(1, 1, NaN), RangeError);
+});
+
+test('Ocean shade changes stay bounded at targeted sky, foam, and water crossings', () => {
+  const surfaceAt = (x, width, seconds, pixelHeight) => {
+    const fx = x / width;
+    const wave = Math.sin(fx * 6 + seconds * 1.5) * .08 + Math.sin(fx * 12 + seconds * 2.5) * .04
+      + Math.sin(fx * 3 + seconds * .8) * .12 + Math.sin(fx * 18 + seconds * 3.5) * .02;
+    return pixelHeight * (.35 + .3 * Math.tanh(1.7 * wave / .3));
+  };
+  const color = (frame, y, x, key) => frame[Math.floor(y / 2)][x][key] ?? [0, 0, 0];
+  for (const boundary of [-2, -1.75, 0, 1.75]) {
+    let crossing;
+    for (let x = 0; x < 80 && !crossing; x++) for (let y = 0; y < 12 && !crossing; y++) {
+      let previousTime = 0, previousDepth = y - surfaceAt(x, 80, 0, 12) - boundary;
+      for (let tick = 1; tick <= 2400; tick++) {
+        const time = tick / 20;
+        const depth = y - surfaceAt(x, 80, time, 12) - boundary;
+        if (depth * previousDepth <= 0) {
+          let low = previousTime, high = time;
+          for (let i = 0; i < 40; i++) {
+            const mid = (low + high) / 2;
+            if ((y - surfaceAt(x, 80, mid, 12) - boundary) * previousDepth > 0) low = mid; else high = mid;
+          }
+          crossing = { x, y, time: (low + high) / 2 };
+          break;
+        }
+        previousTime = time;
+        previousDepth = depth;
+      }
+    }
+    assert.ok(crossing, `found crossing at depth ${boundary}`);
+    for (const key of crossing.y % 2 ? ['bg'] : ['fg']) {
+      const before = color(renderOcean(80, 6, crossing.time - 1e-5), crossing.y, crossing.x, key);
+      const after = color(renderOcean(80, 6, crossing.time + 1e-5), crossing.y, crossing.x, key);
+      const delta = Math.max(...before.map((channel, i) => Math.abs(channel - after[i])));
+      assert.ok(delta <= 8, `${key} jumped ${delta} RGB levels crossing depth ${boundary} at ${crossing.time}s`);
+    }
+  }
+  const frame = renderOcean(80, 6, .5);
+  const colors = frame.flatMap(row => row.flatMap(cell => [cell.fg, cell.bg].filter(Boolean)));
+  assert.ok(colors.some(color => color[0] >= 160 && color[0] < 220), 'edge includes soft foam tones');
+  assert.ok(colors.some(color => color[2] < 180), 'water remains deep blue beneath the foam');
 });
 
 test('Ocean keeps sky, foam, and water visible through a long run', () => {
