@@ -31,6 +31,10 @@ Raster comparisons at 80x5 and 80x6 for 0.5, 1.25, and 3 seconds are `artifacts/
 
 `npm run bench` measures Ocean at heights 5, 6, and 10 and widths 60, 120, 240, and 320. Its output reports median and p95 CPU render time; it excludes terminal diffing and output. The player's cached render is also measured. A separate 500-frame before/after comparison at 80 columns measured old/new median and p95 CPU time of 0.056/0.073 ms versus 0.080/0.119 ms at 5 rows, and 0.070/0.105 ms versus 0.094/0.133 ms at 6 rows. This isolated renderer benchmark excludes terminal formatting.
 
+## README animation preview
+
+`docs/animations.gif` is a browser capture of the package renderers, not a recording of Pi's UI. It plays 40 frames each of Aurora and Ocean at 100 ms per frame and loops continuously. To make a new capture, run `npm ci --ignore-scripts` and `npm run preview`, then open `.lavish/preview.html` in Chromium. Use Playwright to select each renderer, hide the surrounding page controls, add the animation name above `.terminal`, and capture the complete preview. Assemble the PNGs with Pillow using `duration=100` and `loop=0`. Playwright and Pillow were temporary capture tools, not package dependencies. The capture script is not retained, so these steps describe the process rather than a byte-for-byte reproduction.
+
 ## Checks
 
 Passed on this worktree:
