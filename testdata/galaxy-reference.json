@@ -1,0 +1,26 @@
+[
+  {
+    "w": 20,
+    "h": 4,
+    "t": 0,
+    "sha256": "9bb8066be52709bd8f2c9d0ce26cabb5cd398f4fe9cfa7212ff0b9867602e49a"
+  },
+  {
+    "w": 40,
+    "h": 8,
+    "t": 0,
+    "sha256": "026e3be2c56bb61e14edb6e7d28948f2ef756ddf5741e4dbda5a5edfbd4f08dc"
+  },
+  {
+    "w": 80,
+    "h": 10,
+    "t": 0,
+    "sha256": "864dca7781742c996ff86de5d67fc2fc5a7fd5044dddc40a6e46f1fa4bfa628c"
+  },
+  {
+    "w": 160,
+    "h": 10,
+    "t": 3,
+    "sha256": "c667ce91ea98d5f7a65db72e62bf0893bb97ef3392a2460b0f39e161f90f3260"
+  }
+]

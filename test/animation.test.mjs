@@ -110,7 +110,7 @@ test('commands, session migration, preview, non-TUI guards, and idle cleanup', (
   });
   assert.deepEqual(Object.keys(commands), ['animation']);
   const complete = commands.animation.getArgumentCompletions;
-  assert.deepEqual(complete(''), ['aurora', 'ocean', 'preview', 'off'].map(name => ({ value: name, label: name })));
+  assert.deepEqual(complete(''), ['aurora', 'ocean', 'galaxy', 'preview', 'off'].map(name => ({ value: name, label: name })));
   assert.deepEqual(complete('o').map(item => item.value), ['ocean', 'off']);
   assert.deepEqual(complete(' AUR').map(item => item.value), ['aurora']);
   assert.equal(complete('unknown'), null);

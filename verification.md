@@ -2,6 +2,22 @@
 
 Verified on branch `improve-ocean-shading` with Node 22.23.2, Pi 1.3.0, Python 3, and tmux. Ocean retains the adapted wave geometry and its four original sine phases. It still maps the normalized wave through `0.3 * tanh(1.7 * wave / 0.3)` around the existing `0.35h` anchor, keeping the surface between `0.05h` and `0.65h`. The renderer now blends sky, phase-modulated crest foam, and water by subpixel coverage instead of hard pixel-threshold switches. The original depth gradient was continuous; coarse half-block sampling and discontinuous foam/sky boundaries caused the visual issue. Water shading uses a depth-scaled blue/cyan contour tied to the existing wave phase.
 
+## Galaxy
+
+Galaxy adapts the two-arm phase, anisotropic sampling limit, bulge and dust equations from fresco revision `5e565bf190d2bab563043699bb886954a350c2c4`. It uses a height- and width-limited radius, half-block pixels and a separate monochrome density ramp. A rounder, less-stretched bulge glows behind the near-side dust lane, with an ivory highlight above and light below the lane. It deliberately omits upstream's high-frequency knots and turbulence. Its palette and contrast are adapted for the shorter Pi widget rather than matching fresco's full-pane output.
+
+`testdata/galaxy-reference.json` pins hashes of complete frames at 20x4, 40x8, 80x10 and 160x10. `test/galaxy.test.mjs` checks determinism, size, color, monochrome output, motion, small-frame lane contrast and framing. It also checks 1x1 and 5x50 frames, core color, lane occlusion and light below the lane. The horizontal projection grows smoothly with terminal aspect ratio; its phase-gradient sampling limit includes the horizontal scale. At time zero, counting columns with any RGB channel at least 40, the galaxy spans 53 columns at 80x10 and 69 at 160x10. The previous projection spanned 38 columns at both widths. The 20x4 and 40x8 projections remain unchanged. `testdata/pty-check.py` selects Galaxy and exercises its preview and a running animation in both Pi modes.
+
+`docs/galaxy.gif` contains 60 renderer frames at 80x10 over four seconds, sampled at 15 frames per second and rasterized as 8x8 half-block pixels with Pillow. Frame delays alternate between 60 and 70 ms to preserve the total duration. The GIF plays once rather than resetting mid-turn. `testdata/render-galaxy-capture.py` uses a single palette sampled from all frames without dithering. It decodes the GIF and compares adjacent-frame RGB changes with the source; mean absolute error was 0.245 per channel on a 0 to 255 scale. It also verifies the left sky edge stays black. Inspected color and monochrome stills are in ignored `artifacts/galaxy-{20x4,40x8,80x10,160x10}*.png`. The labeled actual-renderer depth comparison is `artifacts/galaxy-depth-comparison.png`. Pi captures are in ignored `artifacts/{regular,fullscreen}-galaxy-*.ansi` and `.txt`.
+
+To regenerate the capture with Pillow and DejaVu Sans Mono installed:
+
+```sh
+node --experimental-strip-types --input-type=module -e 'import {renderGalaxy} from "./animations/galaxy.ts"; console.log(JSON.stringify({clip:Array.from({length:60},(_,i)=>renderGalaxy(80,10,i/15)),sizes:[[20,4],[40,8],[80,10],[160,10]].map(([w,h])=>renderGalaxy(w,h,0))}));' | python3 testdata/render-galaxy-capture.py
+```
+
+Galaxy checks passed with Pi 1.3.0 and 1.6.1, using a temporary configuration and local provider. The system lacked tmux, so the checks used an extracted Ubuntu tmux 3.2a and its libraries under `/tmp/pi-galaxy-bin`. `npm ci --ignore-scripts` reported three dependency audit findings (two moderate and one high).
+
 ## Aurora reference
 
 `testdata/aurora-reference.json` contains 27 frames from upstream commit `b2b26045b38aa4f59dd50781640cac65e9a291c1`. Cases cover three sizes, three seeds, and three frame times. `test/aurora.test.mjs` compares every glyph and RGB value.

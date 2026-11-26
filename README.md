@@ -3,9 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/@puh00/pi-animations)](https://www.npmjs.com/package/@puh00/pi-animations)
 [![license](https://img.shields.io/npm/l/@puh00/pi-animations)](LICENSE)
 
-Full-width Aurora and Ocean animations for [Pi](https://pi.dev). They adapt to terminal width and stop when a run ends or is cancelled.
+Full-width Aurora, Ocean and Galaxy animations for [Pi](https://pi.dev). They adapt to terminal width and stop when a run ends or is cancelled.
 
 ![Looping Aurora and Ocean animation preview](https://raw.githubusercontent.com/Puh00/pi-animations/f3faea510b379174a79817e3d53b4436cd8369fa/docs/animations.gif)
+
+![Galaxy animation at 80 columns](https://raw.githubusercontent.com/Puh00/pi-animations/main/docs/galaxy.gif)
 
 ## Install and try
 
@@ -24,7 +26,7 @@ In Pi, select an animation, preview it, then send a prompt:
 /animation preview
 ```
 
-Choose Ocean with `/animation ocean`. Press any key to close the preview. Send a normal prompt to see the animation while Pi works.
+Choose Ocean with `/animation ocean` or Galaxy with `/animation galaxy`. Press any key to close the preview. Send a normal prompt to see the animation while Pi works.
 
 ## Try a local checkout
 
@@ -54,14 +56,15 @@ For a browser-only preview, run `npm run preview` and open `.lavish/preview.html
 /animation                 Enable Aurora, the default
 /animation aurora          Select Aurora
 /animation ocean           Select Ocean
+/animation galaxy          Select Galaxy
 /animation preview         Preview the current selection
 /animation off             Restore Pi's normal indicator
 ```
 
 Type `/animation ` to see argument suggestions, or start typing a name to filter them.
 
-Selections persist per session. `/animation off` restores Pi's normal indicator. `ASCIIFX_REDUCED_MOTION=1` and `TERM=dumb` disable animation timers. `NO_COLOR` renders both animations without color.
+Selections persist per session. `/animation off` restores Pi's normal indicator. `ASCIIFX_REDUCED_MOTION=1` and `TERM=dumb` disable animation timers. `NO_COLOR` renders animations without color.
 
 ## Acknowledgements
 
-Aurora comes from [cyperx84/ascii-animations](https://github.com/cyperx84/ascii-animations). Ocean comes from [paulrobello/termflix](https://github.com/paulrobello/termflix). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for their licenses.
+Aurora comes from [cyperx84/ascii-animations](https://github.com/cyperx84/ascii-animations). Ocean comes from [paulrobello/termflix](https://github.com/paulrobello/termflix). Galaxy is adapted from [ZviBaratz/fresco](https://github.com/ZviBaratz/fresco). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for their licenses.
