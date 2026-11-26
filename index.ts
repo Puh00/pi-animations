@@ -1,4 +1,6 @@
-import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { getAgentDir, type ExtensionAPI, type ExtensionContext, type Theme } from "@earendil-works/pi-coding-agent";
+import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { TUI } from "@earendil-works/pi-tui";
 import { createAnimationComponent } from "./animations/player.ts";
 import { animations } from "./animations/registry.ts";
@@ -15,6 +17,27 @@ export function createAnimation(tui: TUI, theme: Theme, name: keyof typeof anima
 }
 
 const WIDGET_KEY = "pi-loading-animation-scene";
+
+function loadMode(): Mode | undefined {
+  try {
+    const data = JSON.parse(readFileSync(join(getAgentDir(), "pi-animations.json"), "utf8"));
+    return typeof data?.mode === "string" ? parseMode(data.mode) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveMode(mode: Mode): void {
+  const dir = getAgentDir();
+  const temporary = mkdtempSync(join(dir, ".pi-animations-"));
+  try {
+    const file = join(temporary, "settings.json");
+    writeFileSync(file, JSON.stringify({ mode }) + "\n", { mode: 0o600 });
+    renameSync(file, join(dir, "pi-animations.json"));
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+}
 
 function canUseWidget(ctx: ExtensionContext): boolean {
   return ctx.mode === "tui" && ctx.hasUI && typeof ctx.ui.setWidget === "function";
@@ -44,6 +67,7 @@ export default function (pi: ExtensionAPI) {
       const data = entry.data as { mode?: unknown } | undefined;
       if (typeof data?.mode === "string") mode = data.mode === "aurora-still" ? "aurora" : parseMode(data.mode) ?? "aurora";
     }
+    mode = loadMode() ?? mode;
     syncUi(ctx);
   });
   pi.on("agent_start", (_event, ctx) => {
@@ -85,7 +109,14 @@ export default function (pi: ExtensionAPI) {
       mode = next;
       syncUi(ctx);
       pi.appendEntry("nap-animation", { mode });
-      if (ctx.hasUI) ctx.ui.notify(`Working animation: ${mode}`, "info");
+      try {
+        saveMode(mode);
+        if (ctx.hasUI) ctx.ui.notify(`Working animation: ${mode}`, "info");
+      } catch (error) {
+        const message = `Working animation: ${mode}, but could not save ${join(getAgentDir(), "pi-animations.json")}: ${error instanceof Error ? error.message : String(error)}`;
+        if (ctx.hasUI) ctx.ui.notify(message, "error");
+        else console.error(message);
+      }
     },
   });
 }

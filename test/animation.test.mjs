@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import extension, { createAnimation, parseMode } from '../index.ts';
 import { createAnimationComponent } from '../animations/player.ts';
 import { visibleWidth } from '@earendil-works/pi-tui';
@@ -100,7 +103,14 @@ test('Ocean player fits tiny and wide widths and advances animation time', () =>
   component.dispose();
 }));
 
-test('commands, session migration, preview, non-TUI guards, and idle cleanup', () => fakeTimers(async ({ timers, callbacks }) => {
+test('commands, session migration, preview, non-TUI guards, and idle cleanup', t => fakeTimers(async ({ timers, callbacks }) => {
+  const dir = mkdtempSync(join(tmpdir(), 'pi-animation-test-'));
+  const oldDir = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = dir;
+  t.after(() => {
+    if (oldDir === undefined) delete process.env.PI_CODING_AGENT_DIR; else process.env.PI_CODING_AGENT_DIR = oldDir;
+    rmSync(dir, { recursive: true, force: true });
+  });
   const handlers = {}, commands = {}, entries = [], indicators = [], notifications = [], previews = [];
   const widgets = new Map();
   extension({
@@ -180,6 +190,7 @@ test('commands, session migration, preview, non-TUI guards, and idle cleanup', (
     assert.equal(widgets.size, 0);
     assert.equal(timers.size, 0);
   }
+  rmSync(join(dir, 'pi-animations.json'));
   for (const savedMode of ['cat', 'ocean', 'aurora-still', 'off']) {
     await handlers.session_start({}, context('tui', [{ type: 'custom', customType: 'nap-animation', data: { mode: savedMode } }]));
     await handlers.agent_start({}, context());
@@ -197,4 +208,64 @@ test('commands, session migration, preview, non-TUI guards, and idle cleanup', (
   }
   assert.equal(callbacks.size, previousTimers);
   assert.equal(timers.size, 0);
+}));
+
+
+test('global selection takes precedence and failed saves are reported', t => fakeTimers(async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pi-animation-settings-'));
+  const previous = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = dir;
+  t.after(() => {
+    if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR; else process.env.PI_CODING_AGENT_DIR = previous;
+    rmSync(dir, { recursive: true, force: true });
+  });
+  const file = join(dir, 'pi-animations.json');
+  const handlers = {}, commands = {}, notifications = [];
+  let widget;
+  extension({ on: (name, fn) => { handlers[name] = fn; }, registerCommand: (name, command) => { commands[name] = command; }, appendEntry() {} });
+  const context = saved => ({
+    mode: 'tui', hasUI: true, sessionManager: { getBranch: () => saved },
+    ui: {
+      setWorkingIndicator() {}, notify: (...args) => notifications.push(args),
+      setWidget: (_key, factory) => { widget?.dispose(); widget = factory?.({ requestRender() {} }, theme); },
+      custom: async factory => { const component = factory({ requestRender() {} }, theme, {}, () => {}); component.dispose(); },
+    },
+  });
+  const oldSession = [{ type: 'custom', customType: 'nap-animation', data: { mode: 'ocean' } }];
+  const select = value => commands.animation.handler(value, context([]));
+  const start = async saved => { await handlers.session_start({}, context(saved)); await handlers.agent_start({}, context(saved)); };
+  const expected = name => { const component = createAnimation({ requestRender() {} }, theme, name); const frame = component.render(50); component.dispose(); return frame; };
+
+  await select('galaxy');
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { mode: 'galaxy' });
+  await start([]);
+  assert.deepEqual(widget.render(50), expected('galaxy'), 'new session starts with Galaxy');
+  writeFileSync(file, JSON.stringify({ mode: 'ocean' }));
+  await handlers.agent_start({}, context([]));
+  assert.deepEqual(widget.render(50), expected('galaxy'), 'open sessions do not sync external changes');
+  writeFileSync(file, JSON.stringify({ mode: 'galaxy' }));
+  await select('preview');
+  await select('invalid');
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { mode: 'galaxy' });
+  await select('');
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { mode: 'aurora' });
+  await start(oldSession);
+  assert.deepEqual(widget.render(50), expected('aurora'), 'global Aurora overrides old Ocean history');
+  await select('off');
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { mode: 'off' });
+  await start(oldSession);
+  assert.equal(widget, undefined);
+  for (const invalid of ['{', JSON.stringify({ mode: 'invalid' }), JSON.stringify({ mode: 42 })]) {
+    writeFileSync(file, invalid);
+    await start(oldSession);
+    assert.deepEqual(widget.render(50), expected('ocean'), 'invalid global data falls back to history');
+  }
+  rmSync(file);
+  await start([]);
+  assert.deepEqual(widget.render(50), expected('aurora'));
+  mkdirSync(file);
+  await select('galaxy');
+  assert.equal(notifications.at(-1)[1], 'error');
+  assert.match(notifications.at(-1)[0], /could not save.*pi-animations\.json/);
+  await handlers.session_shutdown({}, context([]));
 }));

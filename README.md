@@ -63,7 +63,7 @@ For a browser-only preview, run `npm run preview` and open `.lavish/preview.html
 
 Type `/animation ` to see argument suggestions, or start typing a name to filter them.
 
-Selections persist per session. `/animation off` restores Pi's normal indicator. `ASCIIFX_REDUCED_MOTION=1` and `TERM=dumb` disable animation timers. `NO_COLOR` renders animations without color.
+Selections, including `off`, are saved in `pi-animations.json` in Pi's agent directory and used when a session starts. Open sessions keep their own selection until restarted. If the file is missing or invalid, the extension uses the session's previous selection or Aurora. Previewing does not change the saved selection. `/animation off` restores Pi's normal indicator. `ASCIIFX_REDUCED_MOTION=1` and `TERM=dumb` disable animation timers. `NO_COLOR` renders animations without color.
 
 ## Acknowledgements
 

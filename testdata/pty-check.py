@@ -173,6 +173,7 @@ try:
         assert str(ROOT) in installed
         (ARTIFACTS / "local-install.txt").write_text(installed)
         for mode in ["regular", "fullscreen"]:
+            Path(config, "pi-animations.json").unlink(missing_ok=True)
             run(mode, config)
 finally:
     subprocess.run(["tmux", "-L", SOCKET, "kill-server"], capture_output=True)
