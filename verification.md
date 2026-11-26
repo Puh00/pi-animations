@@ -18,6 +18,10 @@ node --experimental-strip-types --input-type=module -e 'import {renderGalaxy} fr
 
 Galaxy checks passed with Pi 1.3.0 and 1.6.1, using a temporary configuration and local provider. The system lacked tmux, so the checks used an extracted Ubuntu tmux 3.2a and its libraries under `/tmp/pi-galaxy-bin`. `npm ci --ignore-scripts` reported three dependency audit findings (two moderate and one high).
 
+## Shared animation selection
+
+`test/animation.test.mjs` uses temporary Pi agent directories to check that a fresh session starts with the saved Galaxy selection and that a later Aurora selection overrides old Ocean session history. It also checks `off`, the bare command, preview and invalid commands, invalid or missing settings, no live synchronization, and save failures. Pi tests run with a temporary configuration and local provider.
+
 ## Aurora reference
 
 `testdata/aurora-reference.json` contains 27 frames from upstream commit `b2b26045b38aa4f59dd50781640cac65e9a291c1`. Cases cover three sizes, three seeds, and three frame times. `test/aurora.test.mjs` compares every glyph and RGB value.
